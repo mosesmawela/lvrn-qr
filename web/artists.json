@@ -1,0 +1,27 @@
+{
+  "roster": [
+    { "slug": "lvrn",       "name": "LVRN",        "color": "#ffffff", "accent": "#000000", "logo": "assets/logos/lvrn.svg" },
+    { "slug": "alxapo",     "name": "Al Xapo",     "color": "#0fb8a4", "accent": "#ff6b1a", "logo": "assets/logos/alxapo.svg" },
+    { "slug": "ciza",       "name": "CIZA",        "color": "#e63946", "accent": "#1d3557", "logo": "assets/logos/ciza.svg" },
+    { "slug": "txc",        "name": "TxC",         "color": "#f4a261", "accent": "#2a9d8f", "logo": "assets/logos/txc.svg" },
+    { "slug": "chle",       "name": "Chlé",   "color": "#c9a227", "accent": "#3a0ca3", "logo": "assets/logos/chle.svg" },
+    { "slug": "kaygeersa",  "name": "KaygeeRSA",   "color": "#7209b7", "accent": "#f72585", "logo": "assets/logos/kaygeersa.svg" },
+    { "slug": "ggoldie",    "name": "Ggoldie",     "color": "#ffd60a", "accent": "#001d3d", "logo": "assets/logos/ggoldie.svg" },
+    { "slug": "ezmaestro",  "name": "EZ Maestro",  "color": "#06d6a0", "accent": "#073b4c", "logo": "assets/logos/ezmaestro.svg" },
+    { "slug": "leandravert","name": "Leandra Vert","color": "#ef476f", "accent": "#118ab2", "logo": "assets/logos/leandravert.svg" },
+    { "slug": "optimist",   "name": "Optimist Music","color": "#ffc300","accent": "#003566","logo": "assets/logos/optimist.svg" },
+    { "slug": "sthibo",     "name": "Sthibo De Beat","color": "#9d0208","accent": "#ffba08","logo": "assets/logos/sthibo.svg" },
+    { "slug": "sushib",     "name": "Sushi B",     "color": "#ff006e", "accent": "#3a86ff", "logo": "assets/logos/sushib.svg" }
+  ],
+  "contentTypes": [
+    { "slug": "single",   "label": "Single" },
+    { "slug": "album",    "label": "Album / EP" },
+    { "slug": "video",    "label": "Music Video" },
+    { "slug": "presave",  "label": "Pre-Save" },
+    { "slug": "epk",      "label": "EPK" },
+    { "slug": "merch",    "label": "Merch" },
+    { "slug": "event",    "label": "Event / Show" },
+    { "slug": "social",   "label": "Social" },
+    { "slug": "custom",   "label": "Custom" }
+  ]
+}

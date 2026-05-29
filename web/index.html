@@ -1,0 +1,554 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>LVRN QR · Release Ops</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="vendor/qr-code-styling.js"></script>
+<script src="vendor/gsap.min.js"></script>
+<script src="vendor/jszip.min.js"></script>
+<script src="vendor/jspdf.umd.min.js"></script>
+<style>
+  :root {
+    --bg:#0a0a0a; --fg:#fff; --muted:#5f5f5f; --muted-2:#3a3a3a; --line:#1a1a1a;
+    --accent:#fff; --ok:#0fb8a4; --err:#ff3b1a;
+    --pad-x: clamp(20px, 5vw, 64px);
+  }
+  *, *::before, *::after { box-sizing:border-box; }
+  html, body { margin:0; padding:0; background:var(--bg); color:var(--fg); font-family:'Inter',sans-serif; min-height:100vh; overflow-x:hidden; -webkit-font-smoothing:antialiased; }
+  body { cursor:none; }
+
+  .cursor { position:fixed; width:14px; height:14px; border:1px solid var(--fg); border-radius:50%; pointer-events:none; z-index:9999; transition:transform .15s, background .15s; mix-blend-mode:difference; top:0; left:0; }
+  .cursor.hot { background:var(--fg); transform:scale(1.8); }
+
+  header { padding:24px var(--pad-x); display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--line); position:sticky; top:0; background:rgba(10,10,10,.85); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); z-index:100; }
+  .brand-block { display:flex; align-items:center; gap:14px; }
+  .brand-logo { width:36px; height:36px; filter:invert(1); flex-shrink:0; }
+  .brand-text .a { font-family:'JetBrains Mono',monospace; font-size:12px; letter-spacing:.25em; text-transform:uppercase; font-weight:500; }
+  .brand-text .b { font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:.25em; text-transform:uppercase; color:var(--muted); margin-top:2px; }
+  .crumb { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--muted); letter-spacing:.2em; text-transform:uppercase; }
+
+  main { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); min-height:calc(100vh - 78px); }
+  .panel { padding:48px var(--pad-x); }
+  .panel.form { border-right:1px solid var(--line); }
+  .panel.preview { background:radial-gradient(circle at 50% 30%, #111 0%, var(--bg) 70%); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:32px; min-height:480px; position:sticky; top:78px; max-height:calc(100vh - 78px); }
+
+  .form-head { margin-bottom:36px; }
+  h1 { font-weight:300; font-size:clamp(40px, 5vw, 64px); line-height:.95; letter-spacing:-.035em; margin:0 0 12px; }
+  h1 em { font-style:italic; color:var(--muted); }
+  .sub-line { font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--muted); letter-spacing:.25em; text-transform:uppercase; }
+
+  .section-title { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--muted); letter-spacing:.3em; text-transform:uppercase; margin:32px 0 18px; padding-bottom:10px; border-bottom:1px solid var(--line); font-weight:500; }
+  .section-title:first-of-type { margin-top:0; }
+
+  .field { margin-bottom:20px; }
+  .field label { display:block; font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:.28em; text-transform:uppercase; color:var(--muted); margin-bottom:8px; font-weight:500; }
+  .field input[type=text], .field input[type=url], .field select {
+    width:100%; background:transparent; color:var(--fg); border:none; border-bottom:1px solid var(--line);
+    padding:10px 0; font-family:'Inter',sans-serif; font-size:17px; font-weight:300; outline:none;
+    transition:border-color .25s ease; -webkit-appearance:none; appearance:none; border-radius:0;
+  }
+  .field input:focus, .field select:focus { border-bottom-color:var(--fg); }
+  .field input::placeholder { color:var(--muted-2); font-weight:300; }
+  .field select { background-image:linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position:calc(100% - 12px) 16px, calc(100% - 7px) 16px; background-size:5px 5px, 5px 5px; background-repeat:no-repeat; padding-right:24px; }
+  .field select option { background:var(--bg); color:var(--fg); }
+
+  .field input[type=color] { width:100%; height:46px; border:1px solid var(--line); background:transparent; padding:4px; cursor:none; }
+  .field input[type=color]::-webkit-color-swatch-wrapper { padding:0; }
+  .field input[type=color]::-webkit-color-swatch { border:none; }
+  .field input[type=file] { display:none; }
+  .file-btn { display:inline-block; padding:10px 16px; border:1px solid var(--line); font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:.22em; text-transform:uppercase; color:var(--muted); transition:border-color .2s, color .2s; }
+  .file-btn:hover { border-color:var(--fg); color:var(--fg); }
+  .file-name { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--muted); margin-top:6px; word-break:break-all; }
+
+  .row { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .row-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+
+  .toggles { display:flex; flex-direction:column; gap:12px; margin:8px 0 24px; padding:18px 0; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+  .toggle { display:flex; align-items:center; gap:12px; font-family:'JetBrains Mono',monospace; font-size:10.5px; letter-spacing:.22em; text-transform:uppercase; color:var(--muted); user-select:none; }
+  .toggle input { width:14px; height:14px; accent-color:#fff; flex-shrink:0; margin:0; }
+  .toggle:hover { color:var(--fg); }
+
+  .actions { display:flex; gap:8px; flex-wrap:wrap; }
+  button.btn { background:var(--fg); color:var(--bg); border:none; padding:14px 22px; font-family:'JetBrains Mono',monospace; font-size:10.5px; letter-spacing:.26em; text-transform:uppercase; font-weight:500; transition:transform .2s ease, background .2s; cursor:none; min-height:48px; }
+  button.btn:hover { transform:translateY(-2px); }
+  button.btn:active { transform:translateY(0); }
+  button.btn.ghost { background:transparent; color:var(--fg); border:1px solid var(--line); }
+  button.btn.ghost:hover { border-color:var(--fg); }
+  button.btn.primary { flex:1 1 100%; padding:18px 26px; min-height:56px; font-size:11px; }
+  .kbd { font-family:'JetBrains Mono',monospace; font-size:8.5px; color:var(--muted); letter-spacing:.2em; padding:2px 6px; border:1px solid var(--muted-2); margin-left:8px; vertical-align:middle; border-radius:2px; }
+
+  .toast { position:fixed; bottom:24px; left:50%; transform:translate(-50%, 10px); padding:14px 24px; background:var(--ok); color:#000; font-family:'JetBrains Mono',monospace; font-size:10.5px; letter-spacing:.25em; text-transform:uppercase; opacity:0; pointer-events:none; transition:opacity .3s, transform .3s; z-index:9000; max-width:calc(100vw - 40px); }
+  .toast.show { opacity:1; transform:translate(-50%, 0); }
+  .toast.err { background:var(--err); color:#fff; }
+
+  .qr-wrap { width:min(380px, 80vw); aspect-ratio:1/1; background:#fff; padding:24px; display:flex; align-items:center; justify-content:center; position:relative; box-shadow:0 30px 80px rgba(0,0,0,.5), 0 8px 20px rgba(0,0,0,.4); }
+  .qr-wrap #qr { width:100%; height:100%; display:flex; align-items:center; justify-content:center; }
+  .qr-wrap canvas, .qr-wrap svg, .qr-wrap img { max-width:100%; max-height:100%; width:100% !important; height:100% !important; display:block; }
+  .qr-meta { font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--muted); letter-spacing:.22em; text-transform:uppercase; text-align:center; line-height:2; }
+  .qr-meta .head { color:var(--fg); font-size:11px; letter-spacing:.25em; }
+  .qr-meta .short { color:var(--fg); font-size:13px; letter-spacing:.1em; word-break:break-all; }
+  .qr-meta .dest { font-size:10px; max-width:340px; word-break:break-all; }
+
+  .registry { padding:36px var(--pad-x); border-top:1px solid var(--line); }
+  .registry h2 { font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--muted); letter-spacing:.28em; text-transform:uppercase; margin:0 0 20px; font-weight:500; }
+  .reg-list { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:14px; }
+  .reg-item { padding:16px 18px; border:1px solid var(--line); font-family:'JetBrains Mono',monospace; font-size:10.5px; transition:border-color .2s, background .2s; }
+  .reg-item:hover { border-color:var(--fg); background:#0f0f0f; }
+  .reg-item .a { color:var(--fg); letter-spacing:.18em; text-transform:uppercase; margin-bottom:6px; }
+  .reg-item .b { color:var(--muted); word-break:break-all; line-height:1.6; }
+
+  footer { padding:24px var(--pad-x) 40px; border-top:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; font-family:'JetBrains Mono',monospace; font-size:9.5px; color:var(--muted); letter-spacing:.25em; text-transform:uppercase; }
+
+  a, button, select, input, textarea, label { cursor:none; }
+
+  @media (max-width: 880px) {
+    body { cursor:auto; } .cursor { display:none; }
+    a, button, select, input, textarea, label { cursor:pointer; }
+    header { padding:16px 20px; }
+    .brand-text .a { font-size:11px; }
+    .brand-text .b { display:none; }
+    .brand-logo { width:32px; height:32px; }
+    main { grid-template-columns:1fr; min-height:auto; }
+    .panel { padding:32px 20px; }
+    .panel.form { border-right:none; }
+    .panel.preview { position:static; max-height:none; padding:40px 20px 48px; border-bottom:1px solid var(--line); order:-1; min-height:auto; }
+    h1 { font-size:42px; }
+    .form-head { margin-bottom:28px; }
+    .row, .row-3 { grid-template-columns:1fr; gap:0; }
+    .row .field, .row-3 .field { margin-bottom:18px; }
+    button.btn { flex:1; padding:14px 16px; font-size:9.5px; letter-spacing:.2em; }
+    button.btn.primary { flex:1 1 100%; }
+    .qr-wrap { width:min(280px, 75vw); padding:18px; }
+    .registry { padding:28px 20px; } .reg-list { grid-template-columns:1fr; }
+    footer { flex-direction:column; gap:10px; padding:20px; text-align:center; }
+  }
+</style>
+</head>
+<body>
+<div class="cursor" id="cursor"></div>
+<div class="toast" id="toast"></div>
+
+<header>
+  <div class="brand-block">
+    <img class="brand-logo" src="assets/logos/lvrn.svg" alt="LVRN" />
+    <div class="brand-text">
+      <div class="a">LVRN · QR</div>
+      <div class="b">Release Ops Suite</div>
+    </div>
+  </div>
+  <div class="crumb">v0.3 · qrcode.lvrn.dev</div>
+</header>
+
+<main>
+  <section class="panel preview">
+    <div class="qr-wrap" id="qrWrap">
+      <div id="qr"></div>
+    </div>
+    <div class="qr-meta">
+      <div class="head" id="metaArtist">—</div>
+      <div class="short" id="metaShort">—</div>
+      <div class="dest" id="metaDest">paste a destination url to begin</div>
+    </div>
+  </section>
+
+  <section class="panel form">
+    <div class="form-head">
+      <h1>QR <em>generator</em></h1>
+      <div class="sub-line">artist · content · destination</div>
+    </div>
+
+    <div class="section-title">Identity</div>
+    <div class="field"><label>Artist name</label><input id="artist" type="text" placeholder="example" autocomplete="off" /></div>
+    <div class="row">
+      <div class="field"><label>Content type</label>
+        <select id="type">
+          <option value="single">Single</option><option value="album">Album / EP</option>
+          <option value="video">Music Video</option><option value="presave">Pre-Save</option>
+          <option value="epk">EPK</option><option value="merch">Merch</option>
+          <option value="event">Event / Show</option><option value="social">Social</option>
+          <option value="custom">Custom</option>
+        </select>
+      </div>
+      <div class="field"><label>Error correction</label>
+        <select id="ecc">
+          <option value="L">L · 7%</option><option value="M">M · 15%</option>
+          <option value="Q">Q · 25%</option><option value="H" selected>H · 30%</option>
+        </select>
+      </div>
+    </div>
+    <div class="field"><label>Campaign / title tag</label><input id="title" type="text" placeholder="example" autocomplete="off" /></div>
+    <div class="field"><label>Destination URL</label><input id="url" type="text" placeholder="https://example.com" autocomplete="off" /></div>
+    <div class="field"><label>Short slug (auto)</label><input id="slug" type="text" placeholder="example" autocomplete="off" /></div>
+
+    <div class="section-title">Style</div>
+    <div class="row-3">
+      <div class="field"><label>Module style</label>
+        <select id="dotStyle">
+          <option value="square">Square</option><option value="rounded" selected>Rounded</option>
+          <option value="dots">Dots</option><option value="classy">Classy</option>
+          <option value="classy-rounded">Classy Rounded</option><option value="extra-rounded">Extra Rounded</option>
+        </select>
+      </div>
+      <div class="field"><label>Corner style</label>
+        <select id="cornerStyle">
+          <option value="square">Square</option><option value="dot">Dot</option>
+          <option value="extra-rounded" selected>Rounded</option>
+        </select>
+      </div>
+      <div class="field"><label>Inner corner</label>
+        <select id="cornerDot">
+          <option value="square">Square</option><option value="dot" selected>Dot</option>
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field"><label>QR color (dark)</label><input type="color" id="colorDark" value="#000000" /></div>
+      <div class="field"><label>Background (light)</label><input type="color" id="colorLight" value="#ffffff" /></div>
+    </div>
+
+    <div class="section-title">Logo</div>
+    <div class="row">
+      <div class="field">
+        <label>Custom logo (optional)</label>
+        <label class="file-btn" for="logoFile">Upload PNG / SVG</label>
+        <input type="file" id="logoFile" accept="image/png,image/svg+xml,image/jpeg" />
+        <div class="file-name" id="logoName">Using LVRN mark</div>
+      </div>
+      <div class="field" style="display:flex; flex-direction:column; justify-content:flex-end; gap:10px;">
+        <label class="toggle"><input type="checkbox" id="embedLogo" checked /> Embed logo in center</label>
+        <button class="btn ghost" id="resetLogo" type="button" style="min-height:38px; padding:8px 14px; font-size:9.5px;">Reset to LVRN logo</button>
+      </div>
+    </div>
+
+    <div class="toggles">
+      <label class="toggle"><input type="checkbox" id="useShortLink" /> Use r.lvrn.dev short-link (so you can change destination later)</label>
+    </div>
+
+    <div class="actions">
+      <button class="btn primary" id="gen">Generate QR <span class="kbd">⌘ ↵</span></button>
+      <button class="btn ghost" id="dlPng">PNG</button>
+      <button class="btn ghost" id="dlSvg">SVG</button>
+      <button class="btn ghost" id="dlPdf">PDF</button>
+      <button class="btn ghost" id="dlPack">Multi-size .zip</button>
+      <button class="btn ghost" id="share">Copy share link</button>
+      <button class="btn ghost" id="save">Save</button>
+    </div>
+  </section>
+</main>
+
+<section class="registry">
+  <h2>Recent · this session</h2>
+  <div class="reg-list" id="regList"></div>
+</section>
+
+<footer>
+  <div>LVRN · Love Renaissance</div>
+  <div>qrcode.lvrn.dev</div>
+</footer>
+
+<script>
+  // ====================== State ======================
+  let CURRENT = null, QR = null, LOGO_DATA_URL = 'assets/logos/lvrn.svg';
+  let REGISTRY = JSON.parse(localStorage.getItem('lvrn_qr_reg') || '[]');
+
+  const $ = id => document.getElementById(id);
+  const slugify = s => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+  // ====================== Cursor ======================
+  const cursor = $('cursor');
+  document.addEventListener('mousemove', e => {
+    if (window.gsap) gsap.to(cursor, { x:e.clientX-7, y:e.clientY-7, duration:.3, ease:'power3.out' });
+  });
+  document.querySelectorAll('button, select, input, label').forEach(el => {
+    el.addEventListener('mouseenter', () => cursor.classList.add('hot'));
+    el.addEventListener('mouseleave', () => cursor.classList.remove('hot'));
+  });
+
+  // ====================== Toast ======================
+  function toast(msg, isErr) {
+    const t = $('toast'); t.textContent = msg; t.classList.toggle('err', !!isErr); t.classList.add('show');
+    clearTimeout(t._timer); t._timer = setTimeout(() => t.classList.remove('show'), 2400);
+  }
+
+  // ====================== Slug + URL params ======================
+  function autoSlug() {
+    const artist = slugify($('artist').value);
+    const type = $('type').value;
+    const title = slugify($('title').value);
+    $('slug').value = [artist, type, title].filter(Boolean).join('-');
+  }
+  ['artist','type','title'].forEach(id => $(id).addEventListener('input', autoSlug));
+
+  function loadFromQuery() {
+    const p = new URLSearchParams(location.search);
+    const map = { a:'artist', t:'type', n:'title', u:'url', e:'ecc', d:'colorDark', l:'colorLight', m:'dotStyle', c:'cornerStyle', i:'cornerDot' };
+    let any = false;
+    Object.entries(map).forEach(([k, id]) => { if (p.has(k)) { $(id).value = p.get(k); any = true; } });
+    if (p.has('s')) { $('useShortLink').checked = p.get('s') === '1'; any = true; }
+    if (p.has('lg')) { $('embedLogo').checked = p.get('lg') === '1'; any = true; }
+    if (any) { autoSlug(); setTimeout(generate, 200); }
+  }
+
+  // ====================== QR build ======================
+  function buildOptions(size, url) {
+    return {
+      width: size, height: size, type: 'canvas',
+      data: url, margin: Math.round(size * 0.04),
+      qrOptions: { errorCorrectionLevel: $('ecc').value },
+      dotsOptions: { color: $('colorDark').value, type: $('dotStyle').value },
+      backgroundOptions: { color: $('colorLight').value },
+      cornersSquareOptions: { color: $('colorDark').value, type: $('cornerStyle').value },
+      cornersDotOptions: { color: $('colorDark').value, type: $('cornerDot').value },
+      image: $('embedLogo').checked ? LOGO_DATA_URL : undefined,
+      imageOptions: { hideBackgroundDots:true, imageSize:0.32, margin:6, crossOrigin:'anonymous' }
+    };
+  }
+
+  function generate() {
+    const url = $('url').value.trim();
+    if (!url) { toast('Destination URL required', true); $('url').focus(); return; }
+    const artistName = $('artist').value.trim() || 'lvrn';
+    const artistSlug = slugify(artistName) || 'lvrn';
+    autoSlug();
+    const slug = $('slug').value || slugify(url);
+    const useShort = $('useShortLink').checked;
+    const shortUrl = `r.lvrn.dev/${slug}`;
+    const encodeUrl = useShort ? `https://${shortUrl}` : url;
+
+    try {
+      const host = $('qr'); host.innerHTML = '';
+      QR = new QRCodeStyling(buildOptions(480, encodeUrl));
+      QR.append(host);
+      if (window.gsap) gsap.fromTo('#qrWrap', { scale:.92, opacity:0 }, { scale:1, opacity:1, duration:.55, ease:'back.out(1.6)' });
+      $('metaArtist').textContent = `${artistName} · ${$('type').value}`;
+      $('metaShort').textContent = useShort ? shortUrl : 'direct url';
+      $('metaDest').textContent = url;
+      CURRENT = {
+        artist: artistSlug, artistName,
+        type: $('type').value, title: $('title').value,
+        slug, shortUrl, destination: url, ecc: $('ecc').value,
+        embedLogo: $('embedLogo').checked, encoded: encodeUrl, useShort,
+        style: { dot: $('dotStyle').value, corner: $('cornerStyle').value, inner: $('cornerDot').value, dark: $('colorDark').value, light: $('colorLight').value },
+        createdAt: new Date().toISOString()
+      };
+      toast('QR generated');
+    } catch (e) { console.error(e); toast('Error: ' + e.message, true); }
+  }
+  $('gen').addEventListener('click', generate);
+
+  // Re-render on style change for live feedback
+  ['dotStyle','cornerStyle','cornerDot','colorDark','colorLight','embedLogo','ecc'].forEach(id => {
+    $(id).addEventListener('change', () => { if (CURRENT) generate(); });
+  });
+
+  // ====================== Logo upload ======================
+  $('logoFile').addEventListener('change', e => {
+    const f = e.target.files[0]; if (!f) return;
+    const reader = new FileReader();
+    reader.onload = () => { LOGO_DATA_URL = reader.result; $('logoName').textContent = f.name; if (CURRENT) generate(); toast('Logo loaded'); };
+    reader.readAsDataURL(f);
+  });
+  $('resetLogo').addEventListener('click', () => {
+    LOGO_DATA_URL = 'assets/logos/lvrn.svg'; $('logoFile').value = ''; $('logoName').textContent = 'Using LVRN mark';
+    if (CURRENT) generate(); toast('Reset to LVRN logo');
+  });
+
+  // ====================== Downloads ======================
+  async function getBlob(extension, size) {
+    if (!CURRENT) return null;
+    const tmp = new QRCodeStyling(buildOptions(size || 1024, CURRENT.encoded));
+    return await tmp.getRawData(extension);
+  }
+  function trigger(blob, filename) {
+    const a = document.createElement('a');
+    a.download = filename; a.href = URL.createObjectURL(blob); a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  }
+  function baseName() { return `${CURRENT.artist}_${CURRENT.type}_${CURRENT.slug || 'qr'}`; }
+
+  $('dlPng').addEventListener('click', async () => {
+    if (!CURRENT) { generate(); await new Promise(r => setTimeout(r, 400)); }
+    if (!CURRENT) return;
+    const b = await getBlob('png', 1024); trigger(b, `${baseName()}.png`); toast('PNG downloaded');
+  });
+  $('dlSvg').addEventListener('click', async () => {
+    if (!CURRENT) { generate(); await new Promise(r => setTimeout(r, 400)); }
+    if (!CURRENT) return;
+    const b = await getBlob('svg', 1024); trigger(b, `${baseName()}.svg`); toast('SVG downloaded');
+  });
+
+  // PDF: A4 portrait, QR centered, title + short link + LVRN footer
+  $('dlPdf').addEventListener('click', async () => {
+    if (!CURRENT) { generate(); await new Promise(r => setTimeout(r, 400)); }
+    if (!CURRENT) return;
+    try {
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ unit:'mm', format:'a4', orientation:'portrait' });
+      const blob = await getBlob('png', 2048);
+      const dataUrl = await new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(blob); });
+      const pageW = 210, pageH = 297, qrSize = 120;
+      const x = (pageW - qrSize) / 2, y = 60;
+      // header
+      pdf.setFont('helvetica','normal'); pdf.setFontSize(9); pdf.setTextColor(120);
+      pdf.text('LVRN · QR · RELEASE OPS', pageW/2, 25, { align:'center' });
+      pdf.setFontSize(22); pdf.setTextColor(0);
+      pdf.text(CURRENT.artistName.toUpperCase(), pageW/2, 40, { align:'center' });
+      pdf.setFontSize(10); pdf.setTextColor(120);
+      pdf.text(CURRENT.type.toUpperCase() + (CURRENT.title ? ' · ' + CURRENT.title.toUpperCase() : ''), pageW/2, 48, { align:'center' });
+      // QR
+      pdf.addImage(dataUrl, 'PNG', x, y, qrSize, qrSize);
+      // crop marks
+      pdf.setDrawColor(180); pdf.setLineWidth(0.2);
+      const cm = 4;
+      [[x,y],[x+qrSize,y],[x,y+qrSize],[x+qrSize,y+qrSize]].forEach(([cx,cy], i) => {
+        const dx = i%2 ? 1 : -1, dy = i<2 ? -1 : 1;
+        pdf.line(cx + dx*1, cy, cx + dx*cm, cy);
+        pdf.line(cx, cy + dy*1, cx, cy + dy*cm);
+      });
+      // caption
+      pdf.setFontSize(11); pdf.setTextColor(0);
+      pdf.text('SCAN', pageW/2, y + qrSize + 14, { align:'center' });
+      pdf.setFontSize(9); pdf.setTextColor(120);
+      const cap = CURRENT.useShort ? CURRENT.shortUrl : CURRENT.destination;
+      pdf.text(cap, pageW/2, y + qrSize + 22, { align:'center' });
+      // footer
+      pdf.setFontSize(8); pdf.setTextColor(160);
+      pdf.text('qrcode.lvrn.dev', pageW/2, pageH - 15, { align:'center' });
+      pdf.save(`${baseName()}.pdf`); toast('PDF downloaded');
+    } catch (e) { console.error(e); toast('PDF failed: ' + e.message, true); }
+  });
+
+  // Multi-size pack: 1024², 1080×1920 (story), A4-ready (2480²), SVG
+  $('dlPack').addEventListener('click', async () => {
+    if (!CURRENT) { generate(); await new Promise(r => setTimeout(r, 400)); }
+    if (!CURRENT) return;
+    try {
+      toast('Building zip…');
+      const zip = new JSZip();
+      const folder = zip.folder(baseName());
+      const sizes = [
+        { name:`${baseName()}_1024.png`, ext:'png', size:1024 },
+        { name:`${baseName()}_2048_print.png`, ext:'png', size:2048 },
+        { name:`${baseName()}.svg`, ext:'svg', size:1024 },
+      ];
+      for (const s of sizes) {
+        const b = await getBlob(s.ext, s.size);
+        folder.file(s.name, b);
+      }
+      // Story 1080×1920 (QR on branded background)
+      const story = await buildStory(1080, 1920);
+      folder.file(`${baseName()}_story_1080x1920.png`, story);
+      // Square social 1080×1080 with branded background
+      const square = await buildStory(1080, 1080);
+      folder.file(`${baseName()}_social_1080.png`, square);
+      // Manifest
+      folder.file('manifest.json', JSON.stringify(CURRENT, null, 2));
+      const out = await zip.generateAsync({ type:'blob' });
+      trigger(out, `${baseName()}_pack.zip`);
+      toast('Pack downloaded');
+    } catch (e) { console.error(e); toast('Pack failed: ' + e.message, true); }
+  });
+
+  async function buildStory(w, h) {
+    const cnv = document.createElement('canvas'); cnv.width = w; cnv.height = h;
+    const ctx = cnv.getContext('2d');
+    // bg
+    ctx.fillStyle = '#0a0a0a'; ctx.fillRect(0, 0, w, h);
+    // subtle radial
+    const grad = ctx.createRadialGradient(w/2, h*0.35, 0, w/2, h*0.35, h*0.5);
+    grad.addColorStop(0, '#1a1a1a'); grad.addColorStop(1, '#0a0a0a');
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, w, h);
+    // QR on white card
+    const qrSize = Math.round(Math.min(w, h) * 0.66);
+    const qrX = (w - qrSize) / 2, qrY = (h - qrSize) / 2 - Math.round(h*0.04);
+    const padBox = Math.round(qrSize * 0.08);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(qrX - padBox, qrY - padBox, qrSize + padBox*2, qrSize + padBox*2);
+    // draw QR
+    const qrBlob = await getBlob('png', qrSize);
+    const qrImg = await blobToImage(qrBlob);
+    ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+    // Title text
+    const labelY = qrY + qrSize + padBox*2 + Math.round(h*0.06);
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.font = `300 ${Math.round(w*0.055)}px Inter, sans-serif`;
+    ctx.fillText(CURRENT.artistName.toUpperCase(), w/2, labelY);
+    ctx.font = `400 ${Math.round(w*0.022)}px "JetBrains Mono", monospace`;
+    ctx.fillStyle = '#5f5f5f';
+    const tag = (CURRENT.type + (CURRENT.title ? ' · ' + CURRENT.title : '')).toUpperCase();
+    ctx.fillText(tag, w/2, labelY + Math.round(w*0.075));
+    // top scan label
+    ctx.fillStyle = '#5f5f5f';
+    ctx.font = `500 ${Math.round(w*0.022)}px "JetBrains Mono", monospace`;
+    ctx.fillText('SCAN', w/2, Math.round(h*0.06));
+    // bottom brand
+    ctx.fillStyle = '#3a3a3a';
+    ctx.font = `400 ${Math.round(w*0.018)}px "JetBrains Mono", monospace`;
+    ctx.fillText('QRCODE.LVRN.DEV', w/2, h - Math.round(h*0.05));
+    return await new Promise(res => cnv.toBlob(res, 'image/png'));
+  }
+  function blobToImage(blob) {
+    return new Promise((res, rej) => { const img = new Image(); img.onload = () => res(img); img.onerror = rej; img.src = URL.createObjectURL(blob); });
+  }
+
+  // Share link
+  $('share').addEventListener('click', () => {
+    if (!CURRENT) { generate(); }
+    if (!CURRENT) return;
+    const p = new URLSearchParams({
+      a: CURRENT.artistName, t: CURRENT.type, n: CURRENT.title || '',
+      u: CURRENT.destination, e: CURRENT.ecc,
+      d: CURRENT.style.dark, l: CURRENT.style.light,
+      m: CURRENT.style.dot, c: CURRENT.style.corner, i: CURRENT.style.inner,
+      s: CURRENT.useShort ? '1' : '0', lg: CURRENT.embedLogo ? '1' : '0'
+    });
+    const link = `${location.origin}/?${p.toString()}`;
+    navigator.clipboard.writeText(link).then(() => toast('Share link copied'));
+  });
+
+  // Save
+  $('save').addEventListener('click', () => {
+    if (!CURRENT) { generate(); return; }
+    REGISTRY.unshift(CURRENT);
+    localStorage.setItem('lvrn_qr_reg', JSON.stringify(REGISTRY.slice(0, 200)));
+    renderRegistry();
+    if (window.gsap) gsap.from('.reg-item:first-child', { y:-10, opacity:0, duration:.4, ease:'power3.out' });
+    toast('Saved to registry');
+  });
+
+  function renderRegistry() {
+    const list = $('regList'); list.innerHTML = '';
+    if (!REGISTRY.length) { list.innerHTML = '<div class="reg-item"><div class="a">No saved QRs yet</div><div class="b">Generate one and hit save</div></div>'; return; }
+    REGISTRY.slice(0, 30).forEach(r => {
+      const el = document.createElement('div'); el.className = 'reg-item';
+      el.innerHTML = `<div class="a">${r.artistName} · ${r.type}</div><div class="b">${r.useShort ? r.shortUrl : 'direct'}<br>→ ${r.destination}</div>`;
+      list.appendChild(el);
+    });
+  }
+  renderRegistry();
+
+  // Keyboard
+  document.addEventListener('keydown', e => {
+    const mod = e.metaKey || e.ctrlKey;
+    if (mod && e.key === 'Enter') { e.preventDefault(); generate(); }
+    if (mod && e.key === 's')     { e.preventDefault(); $('save').click(); }
+    if (mod && e.key === 'd')     { e.preventDefault(); $('dlPng').click(); }
+  });
+
+  // Intro
+  if (window.gsap) {
+    gsap.from('header', { y:-20, opacity:0, duration:.7, ease:'power3.out' });
+    gsap.from('.panel.form > *', { y:18, opacity:0, duration:.6, stagger:.025, ease:'power3.out', delay:.15 });
+    gsap.from('.panel.preview', { opacity:0, duration:.9, delay:.25 });
+  }
+
+  // Load from share URL
+  loadFromQuery();
+</script>
+</body>
+</html>

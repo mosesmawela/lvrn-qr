@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "rewrites": [
+    { "source": "/:slug", "destination": "/api/redirect?slug=:slug", "has": [{ "type": "host", "value": "r.lvrn.dev" }] },
+    { "source": "/r/:slug", "destination": "/api/redirect?slug=:slug" }
+  ]
+}
