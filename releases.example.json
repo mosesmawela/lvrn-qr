@@ -1,0 +1,14 @@
+[
+  {
+    "artist": "example",
+    "artistName": "Example Artist",
+    "type": "single",
+    "title": "summer-drop",
+    "slug": "example-single-summer-drop",
+    "shortUrl": "r.lvrn.dev/example-single-summer-drop",
+    "destination": "https://open.spotify.com/track/EXAMPLE",
+    "ecc": "H",
+    "files": { "png": "out/example-single-summer-drop.png", "svg": "out/example-single-summer-drop.svg" },
+    "createdAt": "2026-01-01T00:00:00Z"
+  }
+]

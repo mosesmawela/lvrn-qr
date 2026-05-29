@@ -39,3 +39,7 @@ desktop.ini
 
 # Logs
 *.log
+
+# Production data — kept locally + in deploy environment only, never in public repo
+releases.json
+redirects/links.json

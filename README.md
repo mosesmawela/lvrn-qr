@@ -11,7 +11,7 @@
 
 A full release-ops utility, not a generic QR widget. Every code is tied to an artist + a content type, optionally routed through a changeable short-link, branded with the LVRN mark (or a custom logo), and exported in every format the campaign needs.
 
-Built for LVRN's internal use across the roster: Al Xapo, CIZA, TxC, Chlé, KaygeeRSA, Ggoldie, EZ Maestro, Leandra Vert, Optimist Music, Sthibo De Beat, Sushi B — and the LVRN house mark itself.
+Built for LVRN's internal use across the full roster — every LVRN signee plus the house mark itself.
 
 ---
 
@@ -143,7 +143,25 @@ vercel --prod --yes --force
 
 (Domain `r.lvrn.dev` is attached to the `lvrn-redirects` Vercel project.)
 
-To **register a new short link**, edit `redirects/links.json`:
+### Production data lives outside the repo
+
+Two files are **gitignored** because they contain live LVRN data:
+
+- `redirects/links.json` — the short-link → destination map (active production routes)
+- `releases.json` — the CLI's all-time ledger of generated QRs
+
+Both have committed `.example.json` siblings showing the shape. On a fresh clone, copy them:
+
+```bash
+cp redirects/links.example.json redirects/links.json
+cp releases.example.json releases.json
+```
+
+Then add your real entries locally. The Python CLI writes to these files automatically.
+
+### Registering a new short link
+
+Edit `redirects/links.json`:
 
 ```json
 {
@@ -155,26 +173,31 @@ To **register a new short link**, edit `redirects/links.json`:
 
 ---
 
-## Roster
+## Adding an artist
 
-The web app accepts any free-text artist name. The Python CLI uses the slug list in `web/artists.json` (also used by the web app dropdowns historically — now informational).
+The **web app** accepts any free-text artist name — type it into the Artist field and the slug auto-generates. Nothing to configure.
 
-Currently codified:
+The **Python CLI** reads its roster from `web/artists.json`. To add an artist, append an entry:
 
-- Al Xapo (`alxapo`)
-- CIZA (`ciza`)
-- TxC (`txc`)
-- Chlé (`chle`)
-- KaygeeRSA (`kaygeersa`)
-- Ggoldie (`ggoldie`)
-- EZ Maestro (`ezmaestro`)
-- Leandra Vert (`leandravert`)
-- Optimist Music (`optimist`)
-- Sthibo De Beat (`sthibo`)
-- Sushi B (`sushib`)
-- LVRN (house mark)
+```json
+{
+  "roster": [
+    { "slug": "lvrn",    "name": "LVRN",         "color": "#ffffff", "accent": "#000000" },
+    { "slug": "example", "name": "Example Artist", "color": "#0fb8a4", "accent": "#ff6b1a" }
+  ]
+}
+```
 
-Add new artists to `web/artists.json` — both the web app and CLI pick them up.
+Fields:
+
+- `slug` — kebab-case identifier, used as the URL slug prefix (`example-single-summer-drop`)
+- `name` — display name, appears on PDF exports and registry entries
+- `color` — primary brand color (hex)
+- `accent` — secondary brand color (hex)
+
+The CLI will now accept `--artist example` and use that brand color when rendering.
+
+> The repo ships with a starter `artists.json` containing only the LVRN house mark and one example entry. The full LVRN roster is added locally and is not published here.
 
 ---
 

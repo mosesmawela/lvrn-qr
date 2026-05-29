@@ -1,0 +1,7 @@
+{
+  "_comment": "Example structure. Copy to links.json (gitignored) and add real slug → destination mappings.",
+  "test": "https://qrcode.lvrn.dev/",
+  "example-single-summer-drop": "https://open.spotify.com/track/EXAMPLE",
+  "example-video-summer-drop-mv": "https://youtube.com/watch?v=EXAMPLE",
+  "example-merch-launch": "https://shop.example.com/merch"
+}

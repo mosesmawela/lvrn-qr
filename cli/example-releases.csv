@@ -1,6 +1,6 @@
 artist,type,title,url
-alxapo,single,lobola-szn,https://open.spotify.com/track/EXAMPLE
-alxapo,video,lobola-szn-mv,https://youtube.com/watch?v=EXAMPLE
-ciza,presave,new-album-2026,https://distrokid.com/hyperfollow/EXAMPLE
-txc,merch,summer-drop,https://shop.lvrn.com/txc-summer
-chle,epk,booking,https://chle-epk.vercel.app
+example,single,summer-drop,https://open.spotify.com/track/EXAMPLE
+example,video,summer-drop-mv,https://youtube.com/watch?v=EXAMPLE
+example,presave,new-album,https://distrokid.com/hyperfollow/EXAMPLE
+example,merch,launch,https://shop.example.com/merch
+example,epk,booking,https://example-epk.vercel.app
